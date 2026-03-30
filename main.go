@@ -29,6 +29,7 @@ func main() {
 	mux.HandleFunc("GET /admin/metrics", metricsHandler(cfg))
 	mux.HandleFunc("POST /admin/reset", resetHandler(cfg))
 	mux.HandleFunc("GET /api/healthz", okBody)
+	mux.HandleFunc("POST /api/validate_chirp", validateChirp)
 
 	fmt.Printf("running server on http://localhost%v", server.Addr)
 	server.ListenAndServe()
