@@ -1,8 +1,14 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"net/http"
+	"os"
+
+	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
+	"github.com/theunhackable/chirpy/internal/database"
 )
 
 func okBody(w http.ResponseWriter, req *http.Request) {
@@ -13,8 +19,17 @@ func okBody(w http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
+	godotenv.Load()
 
 	fileServerPath := "."
+	dbURL := os.Getenv("DB_URL")
+
+	db, err := sql.Open("postgres", dbURL)
+	if err != nil {
+		panic(err)
+	}
+
+	dbQueries := database.New(db)
 
 	mux := http.NewServeMux()
 
@@ -23,7 +38,9 @@ func main() {
 		Handler: mux,
 	}
 
-	cfg := &apiConfig{}
+	cfg := &apiConfig{
+		q: dbQueries,
+	}
 
 	mux.Handle("GET /app/", http.StripPrefix("/app", cfg.middlewareMetricInc(http.FileServer(http.Dir(fileServerPath)))))
 	mux.HandleFunc("GET /admin/metrics", metricsHandler(cfg))

@@ -4,10 +4,13 @@ import (
 	"fmt"
 	"net/http"
 	"sync/atomic"
+
+	"github.com/theunhackable/chirpy/internal/database"
 )
 
 type apiConfig struct {
 	fileServerHits atomic.Int32
+	q              *database.Queries
 }
 
 func metricsHandler(cfg *apiConfig) func(http.ResponseWriter, *http.Request) {
