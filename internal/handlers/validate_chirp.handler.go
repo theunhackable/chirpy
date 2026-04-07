@@ -1,10 +1,12 @@
-package main
+package handler
 
 import (
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
+
+	helper "github.com/theunhackable/chirpy/internal/helpers"
 )
 
 func clean(unclean string) string {
@@ -22,7 +24,8 @@ func clean(unclean string) string {
 	}
 	return strings.Join(uncleanWords, " ")
 }
-func validateChirp(w http.ResponseWriter, r *http.Request) {
+
+func ValidateChirp(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
 		Body string `json:"body"`
 	}
@@ -30,12 +33,12 @@ func validateChirp(w http.ResponseWriter, r *http.Request) {
 	params := parameters{}
 
 	if err := decoder.Decode(&params); err != nil {
-		respondWithError(w, 422, "Something went wrong")
+		helper.RespondWithError(w, 422, "Something went wrong")
 		return
 	}
 
 	if len(params.Body) > 140 {
-		respondWithError(w, 400, "Chirp is too long")
+		helper.RespondWithError(w, 400, "Chirp is too long")
 		return
 	}
 	type successBody struct {
@@ -43,5 +46,5 @@ func validateChirp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cleanedText := clean(params.Body)
-	respondWithJson(w, 200, successBody{CleanedBody: cleanedText})
+	helper.RespondWithJson(w, 200, successBody{CleanedBody: cleanedText})
 }

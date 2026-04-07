@@ -1,11 +1,11 @@
-package main
+package helper
 
 import (
 	"encoding/json"
 	"net/http"
 )
 
-func respondWithJson(w http.ResponseWriter, code int, payload any) {
+func RespondWithJson(w http.ResponseWriter, code int, payload any) {
 	type retVals struct {
 		Valid bool `json:"valid"`
 	}
@@ -14,7 +14,7 @@ func respondWithJson(w http.ResponseWriter, code int, payload any) {
 	body, err := json.Marshal(payload)
 
 	if err != nil {
-		respondWithError(w, 500, "Something went wrong")
+		RespondWithError(w, 500, "Something went wrong")
 		return
 	}
 	w.WriteHeader(code)

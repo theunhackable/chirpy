@@ -1,11 +1,11 @@
-package main
+package helper
 
 import (
 	"encoding/json"
 	"net/http"
 )
 
-func respondWithError(w http.ResponseWriter, code int, msg string) {
+func RespondWithError(w http.ResponseWriter, code int, msg string) {
 	type returnVals struct {
 		Error string `json:"error"`
 	}
