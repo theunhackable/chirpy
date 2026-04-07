@@ -15,10 +15,17 @@ func Reset(w http.ResponseWriter, r *http.Request) {
 	if cfg.Platform != "dev" {
 		helper.RespondWithError(w, 403, "you dont have access")
 	}
+
+	if err := cfg.Q.DeleteChirps(context.Background()); err != nil {
+		helper.RespondWithError(w, 500, "Error deleting chirps")
+		return
+	}
+
 	if err := cfg.Q.DeleteUsers(context.Background()); err != nil {
 		helper.RespondWithError(w, 500, "Error deleting users")
 		return
 	}
+
 	msg := model.Message{
 		Message: "Cleared users successfully.",
 		Type:    "message",

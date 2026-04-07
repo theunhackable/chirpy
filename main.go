@@ -23,11 +23,13 @@ func main() {
 	cfg := config.GetConf()
 	mux.Handle("GET /app/", http.StripPrefix("/app", cfg.MiddlewareMetricInc(http.FileServer(http.Dir(fileServerPath)))))
 	mux.HandleFunc("GET /admin/metrics", config.MetricsHandler(cfg))
-	mux.HandleFunc("POST /admin/reset", handler.Reset)
-
 	mux.HandleFunc("GET /api/healthz", handler.HealthzHandler)
-	mux.HandleFunc("POST /api/validate_chirp", handler.ValidateChirp)
+	mux.HandleFunc("GET /api/chirps", handler.GetChirps)
+	mux.HandleFunc("GET /api/chirps/{chirpID}", handler.GetChirpById)
+
+	mux.HandleFunc("POST /admin/reset", handler.Reset)
 	mux.HandleFunc("POST /api/users", handler.CreateUser)
+	mux.HandleFunc("POST /api/chirps", handler.PostChirp)
 
 	fmt.Printf("running server on http://localhost%v", server.Addr)
 	server.ListenAndServe()
