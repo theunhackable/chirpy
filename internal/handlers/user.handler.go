@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
+	"github.com/theunhackable/chirpy/internal/auth"
 	"github.com/theunhackable/chirpy/internal/config"
 	"github.com/theunhackable/chirpy/internal/database"
 	helper "github.com/theunhackable/chirpy/internal/helpers"
@@ -20,12 +21,23 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 	params := model.UserReq{}
 
 	if err := decoder.Decode(&params); err != nil {
-		helper.RespondWithError(w, 422, "Something went wrong")
+		helper.RespondWithError(w, http.StatusUnprocessableEntity,
+			fmt.Sprintf("Something went wrong decoding user create params: %v", err))
 		return
 	}
+
+	hashedPassword, err := auth.HashPassword(params.Password)
+
+	if err != nil {
+		helper.RespondWithError(w, http.StatusInternalServerError,
+			fmt.Sprintf("Something went wrong while hashing user password: %v", err))
+		return
+	}
+
 	newUser := database.CreateUserParams{
-		ID:    uuid.New(),
-		Email: params.Email,
+		ID:             uuid.New(),
+		Email:          params.Email,
+		HashedPassword: hashedPassword,
 	}
 	user, err := cfg.Q.CreateUser(r.Context(), newUser)
 
