@@ -3,10 +3,10 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/google/uuid"
+	"github.com/theunhackable/chirpy/internal/auth"
 	"github.com/theunhackable/chirpy/internal/config"
 	"github.com/theunhackable/chirpy/internal/database"
 	helper "github.com/theunhackable/chirpy/internal/helpers"
@@ -19,7 +19,7 @@ func GetChirps(w http.ResponseWriter, r *http.Request) {
 	chirps, err := cfg.Q.GetAllChirps(context.Background())
 
 	if err != nil {
-		helper.RespondWithError(w, http.StatusInternalServerError, fmt.Sprintf("Unalbe to get chirps from the db: %v", err))
+		helper.RespondWithError(w, http.StatusInternalServerError, err.Error())
 	}
 
 	respChirps := make([]model.ChirpResp, len(chirps))
@@ -40,13 +40,13 @@ func GetChirpById(w http.ResponseWriter, r *http.Request) {
 	cfg := config.GetConf()
 	parsedID, err := uuid.Parse(id)
 	if err != nil {
-		helper.RespondWithError(w, http.StatusNotFound, fmt.Sprintf("Unable to parse the given chirp id to get the chirp: %v", err))
+		helper.RespondWithError(w, http.StatusNotFound, err.Error())
 		return
 	}
 
 	chirp, err := cfg.Q.GetChirpById(context.Background(), parsedID)
 	if err != nil {
-		helper.RespondWithError(w, http.StatusNotFound, fmt.Sprintf("Unable get chirp with given id: %v", err))
+		helper.RespondWithError(w, http.StatusNotFound, err.Error())
 		return
 	}
 
@@ -62,6 +62,22 @@ func GetChirpById(w http.ResponseWriter, r *http.Request) {
 
 func PostChirp(w http.ResponseWriter, r *http.Request) {
 
+	cfg := config.GetConf()
+
+	token, err := auth.GetBearerToken(r.Header)
+
+	if err != nil {
+		helper.RespondWithError(w, http.StatusUnauthorized, err.Error())
+		return
+	}
+
+	userId, err := auth.ValidateJWT(token, cfg.JWTSecret)
+
+	if err != nil {
+		helper.RespondWithError(w, http.StatusUnauthorized, err.Error())
+		return
+	}
+
 	decoder := json.NewDecoder(r.Body)
 	params := model.ChirpReq{}
 
@@ -75,18 +91,16 @@ func PostChirp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cfg := config.GetConf()
-
 	cleanBody := helper.Clean(params.Body)
 
 	chirp, err := cfg.Q.CreateChip(context.Background(), database.CreateChipParams{
 		ID:     uuid.New(),
-		UserID: params.UserId,
+		UserID: userId,
 		Body:   cleanBody,
 	})
 
 	if err != nil {
-		helper.RespondWithError(w, http.StatusInternalServerError, fmt.Sprintf("Something went wrong while creating chirp: %v", err))
+		helper.RespondWithError(w, http.StatusInternalServerError, err.Error())
 	}
 
 	helper.RespondWithJson(w, http.StatusCreated, model.ChirpResp{

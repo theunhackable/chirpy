@@ -14,6 +14,7 @@ type ApiConfig struct {
 	FileServerHits atomic.Int32
 	Q              *database.Queries
 	Platform       string
+	JWTSecret      string
 }
 
 func (cfg *ApiConfig) MiddlewareMetricInc(next http.Handler) http.Handler {
@@ -48,6 +49,8 @@ func ResetHandler(cfg *ApiConfig) func(http.ResponseWriter, *http.Request) {
 func GetConf() *ApiConfig {
 	dbURL := os.Getenv("DB_URL")
 
+	jwtSecret := os.Getenv("JWT_SECRET")
+
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		panic(err)
@@ -55,8 +58,9 @@ func GetConf() *ApiConfig {
 
 	dbQueries := database.New(db)
 	cfg := &ApiConfig{
-		Q:        dbQueries,
-		Platform: os.Getenv("PLATFORM"),
+		Q:         dbQueries,
+		Platform:  os.Getenv("PLATFORM"),
+		JWTSecret: jwtSecret,
 	}
 
 	return cfg

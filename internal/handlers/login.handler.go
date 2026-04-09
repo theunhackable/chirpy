@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/theunhackable/chirpy/internal/auth"
 	"github.com/theunhackable/chirpy/internal/config"
@@ -39,10 +40,30 @@ func Login(w http.ResponseWriter, r *http.Request) {
 			fmt.Sprintf("Unable to get user with email %s", params.Email))
 		return
 	}
+	var expiryTime time.Duration
+
+	if params.ExpiresInSeconds != 0 {
+		expiryTime = time.Duration(params.ExpiresInSeconds) * time.Second
+	} else {
+		expiryTime = time.Hour
+	}
+
+	token, err := auth.MakeJWT(user.ID,
+		cfg.JWTSecret,
+		expiryTime,
+	)
+
+	if err != nil || isSame == false {
+		helper.RespondWithError(w, http.StatusInternalServerError,
+			err.Error(),
+		)
+		return
+	}
 
 	helper.RespondWithJson(w, http.StatusOK, model.User{
 		ID:        user.ID,
 		Email:     user.Email,
+		Token:     token,
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,
 	})
