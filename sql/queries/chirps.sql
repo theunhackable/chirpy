@@ -15,6 +15,15 @@ ASC;
 SELECT * FROM chirps
 WHERE id=$1;
 
+-- name: GetChirpByIdAndUserId :one
+SELECT * FROM chirps
+WHERE id = $1 and user_id = $2;
+
+-- name: DeleteChirpById :exec
+DELETE FROM chirps
+WHERE id = $1;
+
+
 -- name: DeleteChirps :exec
 DELETE FROM chirps;
 

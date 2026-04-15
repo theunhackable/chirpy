@@ -111,3 +111,51 @@ func PostChirp(w http.ResponseWriter, r *http.Request) {
 		UpdatedAt: chirp.UpdatedAt,
 	})
 }
+
+func DeleteChirpById(w http.ResponseWriter, r *http.Request) {
+
+	id := r.PathValue("chirpID")
+	parsedID, err := uuid.Parse(id)
+	if err != nil {
+		helper.RespondWithError(w, http.StatusNotFound, err.Error())
+		return
+	}
+
+	cfg := config.GetConf()
+
+	token, err := auth.GetBearerToken(r.Header)
+
+	if err != nil {
+		helper.RespondWithError(w, http.StatusUnauthorized, err.Error())
+		return
+	}
+
+	userId, err := auth.ValidateJWT(token, cfg.JWTSecret)
+
+	if err != nil {
+		helper.RespondWithError(w, http.StatusUnauthorized, err.Error())
+		return
+	}
+
+	// i need to verify if the chirpid belong to the user or not
+
+	chirp, err := cfg.Q.GetChirpById(context.Background(), parsedID)
+
+	if err != nil {
+		helper.RespondWithError(w, http.StatusNotFound, err.Error())
+		return
+	}
+
+	if chirp.UserID != userId {
+		helper.RespondWithError(w, http.StatusForbidden, "You are not authorized delete this chirp.")
+		return
+	}
+
+	if err := cfg.Q.DeleteChirpById(context.Background(), chirp.ID); err != nil {
+		helper.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	helper.RespondWithJson(w, http.StatusNoContent, nil)
+
+}

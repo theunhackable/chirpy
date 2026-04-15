@@ -30,7 +30,12 @@ func main() {
 	mux.HandleFunc("POST /api/login", handler.Login)
 	mux.HandleFunc("POST /admin/reset", handler.Reset)
 	mux.HandleFunc("POST /api/users", handler.CreateUser)
+	mux.HandleFunc("PUT /api/users", handler.EditUser)
 	mux.HandleFunc("POST /api/chirps", handler.PostChirp)
+	mux.HandleFunc("POST /api/refresh", handler.RefreshAccessToken)
+	mux.HandleFunc("POST /api/revoke", handler.RevokeRefreshToken)
+
+	mux.HandleFunc("DELETE /api/chirps/{chirpID}", handler.DeleteChirpById)
 
 	fmt.Printf("running server on http://localhost%v", server.Addr)
 	server.ListenAndServe()

@@ -26,8 +26,13 @@ func Reset(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := cfg.Q.DeleteRefreshTokens(context.Background()); err != nil {
+		helper.RespondWithError(w, 500, "Error deleting refresh tokens")
+		return
+	}
+
 	msg := model.Message{
-		Message: "Cleared users successfully.",
+		Message: "Cleared tables successfully.",
 		Type:    "message",
 	}
 	helper.RespondWithJson(w, 200, msg)
