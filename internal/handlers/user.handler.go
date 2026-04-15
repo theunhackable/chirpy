@@ -49,10 +49,11 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	res := model.User{
-		ID:        user.ID,
-		Email:     user.Email,
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
+		ID:          user.ID,
+		Email:       user.Email,
+		IsChirpyRed: user.IsChirpyRed,
+		CreatedAt:   user.CreatedAt,
+		UpdatedAt:   user.UpdatedAt,
 	}
 
 	helper.RespondWithJson(w, 201, res)
@@ -99,9 +100,10 @@ func EditUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	helper.RespondWithJson(w, http.StatusOK, model.User{
-		ID:        updatedUser.ID,
-		Email:     updatedUser.Email,
-		CreatedAt: updatedUser.CreatedAt,
-		UpdatedAt: updatedUser.UpdatedAt,
+		ID:          updatedUser.ID,
+		Email:       updatedUser.Email,
+		IsChirpyRed: updatedUser.IsChirpyRed,
+		CreatedAt:   updatedUser.CreatedAt,
+		UpdatedAt:   updatedUser.UpdatedAt,
 	})
 }

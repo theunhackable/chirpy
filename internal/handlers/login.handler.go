@@ -70,6 +70,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	helper.RespondWithJson(w, http.StatusOK, model.User{
 		ID:           user.ID,
 		Email:        user.Email,
+		IsChirpyRed:  user.IsChirpyRed,
 		Token:        token,
 		RefreshToken: refreshToken,
 		CreatedAt:    user.CreatedAt,

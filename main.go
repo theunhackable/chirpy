@@ -35,6 +35,9 @@ func main() {
 	mux.HandleFunc("POST /api/refresh", handler.RefreshAccessToken)
 	mux.HandleFunc("POST /api/revoke", handler.RevokeRefreshToken)
 
+	// webhook
+	mux.HandleFunc("POST /api/polka/webhooks", handler.PoolkaWebhook)
+
 	mux.HandleFunc("DELETE /api/chirps/{chirpID}", handler.DeleteChirpById)
 
 	fmt.Printf("running server on http://localhost%v", server.Addr)
