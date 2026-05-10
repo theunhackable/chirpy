@@ -15,16 +15,17 @@ type ApiConfig struct {
 	Q              *database.Queries
 	Platform       string
 	JWTSecret      string
+	PolkaKey       string
 }
 
 func (cfg *ApiConfig) MiddlewareMetricInc(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("added 1 to the hits")
 		cfg.FileServerHits.Add(1)
 		next.ServeHTTP(w, r)
 	})
 }
-func MetricsHandler(cfg *ApiConfig) func(http.ResponseWriter, *http.Request) {
+
+func (cfg *ApiConfig) MetricsHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		hitCount := fmt.Sprintf(`<html>
@@ -38,18 +39,10 @@ func MetricsHandler(cfg *ApiConfig) func(http.ResponseWriter, *http.Request) {
 	}
 }
 
-func ResetHandler(cfg *ApiConfig) func(http.ResponseWriter, *http.Request) {
-	return func(w http.ResponseWriter, req *http.Request) {
-		fmt.Println("reset")
-		w.WriteHeader(http.StatusOK)
-		cfg.FileServerHits.Store(0)
-	}
-}
-
 func GetConf() *ApiConfig {
 	dbURL := os.Getenv("DB_URL")
-
 	jwtSecret := os.Getenv("JWT_SECRET")
+	polkaKey := os.Getenv("POLKA_KEY")
 
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
@@ -57,12 +50,10 @@ func GetConf() *ApiConfig {
 	}
 
 	dbQueries := database.New(db)
-	cfg := &ApiConfig{
+	return &ApiConfig{
 		Q:         dbQueries,
 		Platform:  os.Getenv("PLATFORM"),
 		JWTSecret: jwtSecret,
+		PolkaKey:  polkaKey,
 	}
-
-	return cfg
-
 }

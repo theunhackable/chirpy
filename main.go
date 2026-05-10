@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
@@ -13,33 +14,39 @@ import (
 func main() {
 	godotenv.Load()
 
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = ":8080"
+	} else {
+		port = ":" + port
+	}
+
 	fileServerPath := "."
 	mux := http.NewServeMux()
 
+	cfg := config.GetConf()
+	h := handler.NewHandler(cfg)
+
+	mux.Handle("GET /app/", http.StripPrefix("/app", cfg.MiddlewareMetricInc(http.FileServer(http.Dir(fileServerPath)))))
+	mux.HandleFunc("GET /admin/metrics", cfg.MetricsHandler())
+	mux.HandleFunc("GET /api/healthz", handler.HealthzHandler)
+	mux.HandleFunc("GET /api/chirps", h.GetChirps)
+	mux.HandleFunc("GET /api/chirps/{chirpID}", h.GetChirpById)
+	mux.HandleFunc("POST /api/login", h.Login)
+	mux.HandleFunc("POST /admin/reset", h.Reset)
+	mux.HandleFunc("POST /api/users", h.CreateUser)
+	mux.HandleFunc("PUT /api/users", h.EditUser)
+	mux.HandleFunc("POST /api/chirps", h.PostChirp)
+	mux.HandleFunc("POST /api/refresh", h.RefreshAccessToken)
+	mux.HandleFunc("POST /api/revoke", h.RevokeRefreshToken)
+	mux.HandleFunc("POST /api/polka/webhooks", h.PolkaWebhook)
+	mux.HandleFunc("DELETE /api/chirps/{chirpID}", h.DeleteChirpById)
+
 	server := http.Server{
-		Addr:    ":8080",
+		Addr:    port,
 		Handler: mux,
 	}
-	cfg := config.GetConf()
-	mux.Handle("GET /app/", http.StripPrefix("/app", cfg.MiddlewareMetricInc(http.FileServer(http.Dir(fileServerPath)))))
-	mux.HandleFunc("GET /admin/metrics", config.MetricsHandler(cfg))
-	mux.HandleFunc("GET /api/healthz", handler.HealthzHandler)
-	mux.HandleFunc("GET /api/chirps", handler.GetChirps)
-	mux.HandleFunc("GET /api/chirps/{chirpID}", handler.GetChirpById)
 
-	mux.HandleFunc("POST /api/login", handler.Login)
-	mux.HandleFunc("POST /admin/reset", handler.Reset)
-	mux.HandleFunc("POST /api/users", handler.CreateUser)
-	mux.HandleFunc("PUT /api/users", handler.EditUser)
-	mux.HandleFunc("POST /api/chirps", handler.PostChirp)
-	mux.HandleFunc("POST /api/refresh", handler.RefreshAccessToken)
-	mux.HandleFunc("POST /api/revoke", handler.RevokeRefreshToken)
-
-	// webhook
-	mux.HandleFunc("POST /api/polka/webhooks", handler.PoolkaWebhook)
-
-	mux.HandleFunc("DELETE /api/chirps/{chirpID}", handler.DeleteChirpById)
-
-	fmt.Printf("running server on http://localhost%v", server.Addr)
+	fmt.Printf("running server on http://localhost%v\n", port)
 	server.ListenAndServe()
 }

@@ -1,29 +1,48 @@
 package handler
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
+	"sort"
 
 	"github.com/google/uuid"
 	"github.com/theunhackable/chirpy/internal/auth"
-	"github.com/theunhackable/chirpy/internal/config"
 	"github.com/theunhackable/chirpy/internal/database"
 	helper "github.com/theunhackable/chirpy/internal/helpers"
 	model "github.com/theunhackable/chirpy/internal/models"
 )
 
-func GetChirps(w http.ResponseWriter, r *http.Request) {
-	cfg := config.GetConf()
+func (h *Handler) GetChirps(w http.ResponseWriter, r *http.Request) {
+	var filteredChirps []database.Chirp
 
-	chirps, err := cfg.Q.GetAllChirps(context.Background())
+	authorId := r.URL.Query().Get("author_id")
+	sortQ := r.URL.Query().Get("sort")
 
-	if err != nil {
-		helper.RespondWithError(w, http.StatusInternalServerError, err.Error())
+	if authorId != "" {
+		parsedAuthorId, err := uuid.Parse(authorId)
+		if err != nil {
+			helper.RespondWithError(w, http.StatusNotFound, err.Error())
+			return
+		}
+
+		chirps, err := h.Cfg.Q.GetChirpsByUserId(r.Context(), parsedAuthorId)
+		if err != nil {
+			helper.RespondWithError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		filteredChirps = chirps
+	} else {
+		chirps, err := h.Cfg.Q.GetAllChirps(r.Context())
+
+		if err != nil {
+			helper.RespondWithError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		filteredChirps = chirps
 	}
 
-	respChirps := make([]model.ChirpResp, len(chirps))
-	for i, chirp := range chirps {
+	respChirps := make([]model.ChirpResp, len(filteredChirps))
+	for i, chirp := range filteredChirps {
 		respChirps[i] = model.ChirpResp{
 			Id:        chirp.ID,
 			UserId:    chirp.UserID,
@@ -32,19 +51,25 @@ func GetChirps(w http.ResponseWriter, r *http.Request) {
 			UpdatedAt: chirp.UpdatedAt,
 		}
 	}
+
+	if sortQ == "desc" {
+		sort.Slice(respChirps, func(i, j int) bool {
+			return respChirps[i].CreatedAt.After(respChirps[j].CreatedAt)
+		})
+	}
+
 	helper.RespondWithJson(w, http.StatusOK, respChirps)
 }
 
-func GetChirpById(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) GetChirpById(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("chirpID")
-	cfg := config.GetConf()
 	parsedID, err := uuid.Parse(id)
 	if err != nil {
 		helper.RespondWithError(w, http.StatusNotFound, err.Error())
 		return
 	}
 
-	chirp, err := cfg.Q.GetChirpById(context.Background(), parsedID)
+	chirp, err := h.Cfg.Q.GetChirpById(r.Context(), parsedID)
 	if err != nil {
 		helper.RespondWithError(w, http.StatusNotFound, err.Error())
 		return
@@ -57,13 +82,9 @@ func GetChirpById(w http.ResponseWriter, r *http.Request) {
 		CreatedAt: chirp.CreatedAt,
 		UpdatedAt: chirp.UpdatedAt,
 	})
-
 }
 
-func PostChirp(w http.ResponseWriter, r *http.Request) {
-
-	cfg := config.GetConf()
-
+func (h *Handler) PostChirp(w http.ResponseWriter, r *http.Request) {
 	token, err := auth.GetBearerToken(r.Header)
 
 	if err != nil {
@@ -71,7 +92,7 @@ func PostChirp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userId, err := auth.ValidateJWT(token, cfg.JWTSecret)
+	userId, err := auth.ValidateJWT(token, h.Cfg.JWTSecret)
 
 	if err != nil {
 		helper.RespondWithError(w, http.StatusUnauthorized, err.Error())
@@ -93,7 +114,7 @@ func PostChirp(w http.ResponseWriter, r *http.Request) {
 
 	cleanBody := helper.Clean(params.Body)
 
-	chirp, err := cfg.Q.CreateChip(context.Background(), database.CreateChipParams{
+	chirp, err := h.Cfg.Q.CreateChirp(r.Context(), database.CreateChirpParams{
 		ID:     uuid.New(),
 		UserID: userId,
 		Body:   cleanBody,
@@ -101,6 +122,7 @@ func PostChirp(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		helper.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
 	}
 
 	helper.RespondWithJson(w, http.StatusCreated, model.ChirpResp{
@@ -112,16 +134,13 @@ func PostChirp(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func DeleteChirpById(w http.ResponseWriter, r *http.Request) {
-
+func (h *Handler) DeleteChirpById(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("chirpID")
 	parsedID, err := uuid.Parse(id)
 	if err != nil {
 		helper.RespondWithError(w, http.StatusNotFound, err.Error())
 		return
 	}
-
-	cfg := config.GetConf()
 
 	token, err := auth.GetBearerToken(r.Header)
 
@@ -130,16 +149,14 @@ func DeleteChirpById(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userId, err := auth.ValidateJWT(token, cfg.JWTSecret)
+	userId, err := auth.ValidateJWT(token, h.Cfg.JWTSecret)
 
 	if err != nil {
 		helper.RespondWithError(w, http.StatusUnauthorized, err.Error())
 		return
 	}
 
-	// i need to verify if the chirpid belong to the user or not
-
-	chirp, err := cfg.Q.GetChirpById(context.Background(), parsedID)
+	chirp, err := h.Cfg.Q.GetChirpById(r.Context(), parsedID)
 
 	if err != nil {
 		helper.RespondWithError(w, http.StatusNotFound, err.Error())
@@ -151,11 +168,10 @@ func DeleteChirpById(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := cfg.Q.DeleteChirpById(context.Background(), chirp.ID); err != nil {
+	if err := h.Cfg.Q.DeleteChirpById(r.Context(), chirp.ID); err != nil {
 		helper.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	helper.RespondWithJson(w, http.StatusNoContent, nil)
-
 }

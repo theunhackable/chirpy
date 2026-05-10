@@ -1,22 +1,18 @@
 package handler
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/theunhackable/chirpy/internal/auth"
-	"github.com/theunhackable/chirpy/internal/config"
 	"github.com/theunhackable/chirpy/internal/database"
 	helper "github.com/theunhackable/chirpy/internal/helpers"
 	model "github.com/theunhackable/chirpy/internal/models"
 )
 
-func PoolkaWebhook(w http.ResponseWriter, r *http.Request) {
-
+func (h *Handler) PolkaWebhook(w http.ResponseWriter, r *http.Request) {
 	apiKey, err := auth.GetAPIKey(r.Header)
 
 	if err != nil {
@@ -24,10 +20,9 @@ func PoolkaWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if apiKey != os.Getenv("POLKA_KEY") {
-		helper.RespondWithError(w, http.StatusUnauthorized, err.Error())
+	if apiKey != h.Cfg.PolkaKey {
+		helper.RespondWithError(w, http.StatusUnauthorized, "invalid API key")
 		return
-
 	}
 
 	params := model.PolkaReq{}
@@ -44,7 +39,6 @@ func PoolkaWebhook(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		helper.RespondWithJson(w, http.StatusNoContent, nil)
 		return
-
 	}
 
 	if params.Event != "user.upgraded" {
@@ -52,9 +46,7 @@ func PoolkaWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cfg := config.GetConf()
-
-	if err := cfg.Q.UpdateUserSubscriptionById(context.Background(),
+	if err := h.Cfg.Q.UpdateUserSubscriptionById(r.Context(),
 		database.UpdateUserSubscriptionByIdParams{
 			IsChirpyRed: true,
 			ID:          userId,
@@ -65,5 +57,4 @@ func PoolkaWebhook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	helper.RespondWithJson(w, http.StatusNoContent, nil)
-
 }

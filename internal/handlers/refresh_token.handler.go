@@ -1,19 +1,17 @@
 package handler
 
 import (
-	"context"
 	"database/sql"
 	"net/http"
 	"time"
 
 	"github.com/theunhackable/chirpy/internal/auth"
-	"github.com/theunhackable/chirpy/internal/config"
 	"github.com/theunhackable/chirpy/internal/database"
 	helper "github.com/theunhackable/chirpy/internal/helpers"
 	model "github.com/theunhackable/chirpy/internal/models"
 )
 
-func RefreshAccessToken(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) RefreshAccessToken(w http.ResponseWriter, r *http.Request) {
 	token, err := auth.GetBearerToken(r.Header)
 
 	if err != nil {
@@ -21,9 +19,7 @@ func RefreshAccessToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cfg := config.GetConf()
-
-	tokenInfo, err := cfg.Q.GetRefreshTokenByToken(context.Background(), token)
+	tokenInfo, err := h.Cfg.Q.GetRefreshTokenByToken(r.Context(), token)
 
 	if err != nil {
 		helper.RespondWithError(w, http.StatusUnauthorized, err.Error())
@@ -36,25 +32,21 @@ func RefreshAccessToken(w http.ResponseWriter, r *http.Request) {
 	}
 
 	newToken, err := auth.MakeJWT(tokenInfo.UserID,
-		cfg.JWTSecret,
+		h.Cfg.JWTSecret,
 		time.Hour,
 	)
 
 	helper.RespondWithJson(w, http.StatusOK, model.AccessToken{
 		Token: newToken,
 	})
-
 }
 
-func RevokeRefreshToken(w http.ResponseWriter, r *http.Request) {
-
+func (h *Handler) RevokeRefreshToken(w http.ResponseWriter, r *http.Request) {
 	token, err := auth.GetBearerToken(r.Header)
 	if err != nil {
 		helper.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-
-	cfg := config.GetConf()
 
 	editTime := time.Now().UTC()
 	revokedTime := sql.NullTime{
@@ -62,7 +54,7 @@ func RevokeRefreshToken(w http.ResponseWriter, r *http.Request) {
 		Valid: true,
 	}
 
-	if err := cfg.Q.UpdateRefreshTokenByToken(context.Background(),
+	if err := h.Cfg.Q.UpdateRefreshTokenByToken(r.Context(),
 		database.UpdateRefreshTokenByTokenParams{
 			Token:     token,
 			UpdatedAt: editTime,

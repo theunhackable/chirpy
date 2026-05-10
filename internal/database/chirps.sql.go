@@ -11,7 +11,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const createChip = `-- name: CreateChip :one
+const createChirp = `-- name: CreateChirp :one
 INSERT INTO chirps(id, user_id, body)
 VALUES (
   $1,
@@ -20,14 +20,14 @@ VALUES (
 ) RETURNING id, user_id, body, created_at, updated_at
 `
 
-type CreateChipParams struct {
+type CreateChirpParams struct {
 	ID     uuid.UUID
 	UserID uuid.UUID
 	Body   string
 }
 
-func (q *Queries) CreateChip(ctx context.Context, arg CreateChipParams) (Chirp, error) {
-	row := q.db.QueryRowContext(ctx, createChip, arg.ID, arg.UserID, arg.Body)
+func (q *Queries) CreateChirp(ctx context.Context, arg CreateChirpParams) (Chirp, error) {
+	row := q.db.QueryRowContext(ctx, createChirp, arg.ID, arg.UserID, arg.Body)
 	var i Chirp
 	err := row.Scan(
 		&i.ID,
@@ -132,4 +132,38 @@ func (q *Queries) GetChirpByIdAndUserId(ctx context.Context, arg GetChirpByIdAnd
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const getChirpsByUserId = `-- name: GetChirpsByUserId :many
+SELECT id, user_id, body, created_at, updated_at FROM chirps
+WHERE user_id=$1
+`
+
+func (q *Queries) GetChirpsByUserId(ctx context.Context, userID uuid.UUID) ([]Chirp, error) {
+	rows, err := q.db.QueryContext(ctx, getChirpsByUserId, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Chirp
+	for rows.Next() {
+		var i Chirp
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Body,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

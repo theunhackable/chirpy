@@ -6,9 +6,6 @@ import (
 )
 
 func RespondWithJson(w http.ResponseWriter, code int, payload any) {
-	type retVals struct {
-		Valid bool `json:"valid"`
-	}
 	w.Header().Set("Content-Type", "application/json")
 
 	body, err := json.Marshal(payload)
@@ -19,5 +16,4 @@ func RespondWithJson(w http.ResponseWriter, code int, payload any) {
 	}
 	w.WriteHeader(code)
 	w.Write(body)
-
 }

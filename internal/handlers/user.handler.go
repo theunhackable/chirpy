@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -9,15 +8,12 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/theunhackable/chirpy/internal/auth"
-	"github.com/theunhackable/chirpy/internal/config"
 	"github.com/theunhackable/chirpy/internal/database"
 	helper "github.com/theunhackable/chirpy/internal/helpers"
 	model "github.com/theunhackable/chirpy/internal/models"
 )
 
-func CreateUser(w http.ResponseWriter, r *http.Request) {
-
-	cfg := config.GetConf()
+func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 
 	params := model.UserReq{}
@@ -41,35 +37,30 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 		Email:          params.Email,
 		HashedPassword: hashedPassword,
 	}
-	user, err := cfg.Q.CreateUser(r.Context(), newUser)
+	user, err := h.Cfg.Q.CreateUser(r.Context(), newUser)
 
 	if err != nil {
 		helper.RespondWithError(w, 500, fmt.Sprintf("Something went wrong: %v", err))
 		return
 	}
 
-	res := model.User{
+	helper.RespondWithJson(w, 201, model.User{
 		ID:          user.ID,
 		Email:       user.Email,
 		IsChirpyRed: user.IsChirpyRed,
 		CreatedAt:   user.CreatedAt,
 		UpdatedAt:   user.UpdatedAt,
-	}
-
-	helper.RespondWithJson(w, 201, res)
+	})
 }
 
-func EditUser(w http.ResponseWriter, r *http.Request) {
-
+func (h *Handler) EditUser(w http.ResponseWriter, r *http.Request) {
 	accessToken, err := auth.GetBearerToken(r.Header)
 	if err != nil {
 		helper.RespondWithError(w, http.StatusUnauthorized, err.Error())
 		return
 	}
 
-	cfg := config.GetConf()
-
-	userInfo, err := auth.ValidateJWT(accessToken, cfg.JWTSecret)
+	userInfo, err := auth.ValidateJWT(accessToken, h.Cfg.JWTSecret)
 
 	if err != nil {
 		helper.RespondWithError(w, http.StatusUnauthorized, err.Error())
@@ -85,8 +76,12 @@ func EditUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	hashedPassword, err := auth.HashPassword(params.Password)
+	if err != nil {
+		helper.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
 
-	updatedUser, err := cfg.Q.UpdateUserById(context.Background(), database.UpdateUserByIdParams{
+	updatedUser, err := h.Cfg.Q.UpdateUserById(r.Context(), database.UpdateUserByIdParams{
 		Email:          params.Email,
 		HashedPassword: hashedPassword,
 		ID:             userInfo,
@@ -94,7 +89,6 @@ func EditUser(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		fmt.Println("error updating the user...", updatedUser)
 		helper.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
